@@ -1,6 +1,6 @@
 {
   "name": "paseo-parent-wake",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Wake an orchestrating parent agent on every question and every finished turn of its child agents, not only the first one.",
   "private": true,
   "type": "module",

@@ -38,7 +38,21 @@ Pass `notifyOnFinish: false` on `create_agent` and `send_agent_prompt` once the 
 ## How it works
 
 - Hooks `agent.permission_requested` and `agent.turn_ended` (`completed` and `failed`; `canceled` is skipped).
-- Sends the parent the same `<paseo-system>` message Paseo's own notification uses (`needs permission` with a `<permission-request>` block, `finished`/`errored` with the last assistant message, capped at 4000 characters), with `activeTurnBehavior: "steer"` so a running parent is not interrupted.
+- Sends the parent a `<paseo-system>` message shaped like Paseo's own notification, with a readable first line:
+
+  ```
+  <paseo-system>
+  Lead · run-live-character asks: "ping?" — yes / no
+
+  Answer with `respond_to_permission` · agentId: <id> · requestId: <id>
+
+  <permission-request>
+  { ...the request exactly as Paseo reported it... }
+  </permission-request>
+  </paseo-system>
+  ```
+
+  Finished turns read `<title> finished. · agentId: <id>` followed by `<agent-response>` with the last assistant message (capped at 4000 characters); failed turns read `errored: <message>`. Delivered with `activeTurnBehavior: "steer"` so a running parent is not interrupted.
 - If the parent itself has a permission pending (for example its own `AskUserQuestion`), the message is held and delivered when that permission is resolved or the parent's turn ends. Sending immediately would clear the parent's pending question.
 - Each permission request id is delivered once.
 

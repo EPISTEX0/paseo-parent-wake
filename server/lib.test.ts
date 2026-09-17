@@ -25,10 +25,12 @@ test("responseBlock truncates long text", () => {
   assert.match(responseBlock("x".repeat(4500)), /\[truncated 500 chars;/);
 });
 
-test("bodies follow Paseo's own notification wording", () => {
-  const p = permissionBody("a1", "Lead", { id: "r1" });
-  assert.match(p, /^Agent a1 \(Lead\) needs permission\./);
+test("bodies lead with the agent name and carry the ids", () => {
+  const p = permissionBody("a1", "Lead · x", { id: "r1", title: "ping?", description: "yes / no" });
+  assert.match(p, /^Lead · x asks: "ping\?" — yes \/ no\n/);
+  assert.match(p, /agentId: a1 · requestId: r1/);
   assert.match(p, /"requestId": "r1"/);
-  assert.equal(turnBody("a1", "Lead", null, "done"), "Agent a1 (Lead) finished.\n\n<agent-response>\ndone\n</agent-response>");
-  assert.match(turnBody("a1", "Lead", "boom", ""), /errored: boom$/);
+  assert.match(permissionBody("a1", "Lead · x", { id: "r2", name: "Bash" }), /needs permission \(Bash\)/);
+  assert.equal(turnBody("a1", "Lead · x", null, "done"), "Lead · x finished. · agentId: a1\n\n<agent-response>\ndone\n</agent-response>");
+  assert.match(turnBody("a1", "Lead · x", "boom", ""), /^Lead · x errored: boom · agentId: a1$/);
 });

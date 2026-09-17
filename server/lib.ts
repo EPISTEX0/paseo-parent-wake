@@ -33,17 +33,22 @@ export function responseBlock(text: string): string {
   return `\n\n<agent-response>\n${body}\n</agent-response>`;
 }
 
-export function permissionBody(agentId: string, title: string, request: { id: string }): string {
+type Request = { id: string; title?: string | null; description?: string | null; name?: string };
+
+/** Human-readable first line, then the ids and the exact request the parent needs to answer. */
+export function permissionBody(agentId: string, title: string, request: Request): string {
+  const question = request.title ? `asks: "${request.title}"` : `needs permission (${request.name ?? "tool"})`;
+  const options = request.description ? ` — ${request.description}` : "";
   return [
-    `Agent ${agentId} (${title}) needs permission.`,
-    "Respond with `respond_to_permission` using the `agentId` and `requestId` below.",
+    `${title} ${question}${options}`,
+    `Answer with \`respond_to_permission\` · agentId: ${agentId} · requestId: ${request.id}`,
     `<permission-request>\n${JSON.stringify({ agentId, requestId: request.id, request }, null, 2)}\n</permission-request>`,
   ].join("\n\n");
 }
 
 export function turnBody(agentId: string, title: string, error: string | null, lastText: string): string {
-  const head = error ? `Agent ${agentId} (${title}) errored: ${error}` : `Agent ${agentId} (${title}) finished.`;
-  return head + responseBlock(lastText);
+  const head = error ? `${title} errored: ${error}` : `${title} finished.`;
+  return `${head} · agentId: ${agentId}${responseBlock(lastText)}`;
 }
 
 export function systemMessage(body: string): string {

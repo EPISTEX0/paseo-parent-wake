@@ -16,14 +16,15 @@ export default function contribute(server: PluginServerContext) {
     console.log(`[parent-wake] → ${parentId}: ${body.split("\n")[0]}`);
   }
 
-  async function wake(paseo: Paseo, child: PluginHookAgent, body: string) {
+  async function wake(paseo: Paseo, child: PluginHookAgent, makeBody: (title: string) => string) {
     const parentId = child.parentAgentId;
     if (!parentId) return;
     const parent = paseo.agents.ref(parentId);
     const snapshot = (await parent.refresh())?.agent ?? parent.current();
     if (!snapshot || snapshot.archivedAt) return;
-    const childLabels = (await paseo.agents.ref(child.id).refresh())?.agent?.labels;
-    if (!wantsWake(snapshot.labels, childLabels)) return;
+    const childSnapshot = (await paseo.agents.ref(child.id).refresh())?.agent;
+    if (!wantsWake(snapshot.labels, childSnapshot?.labels)) return;
+    const body = makeBody(childSnapshot?.title ?? child.title ?? child.id);
     if (snapshot.pendingPermissions.length > 0) {
       held.set(parentId, [...(held.get(parentId) ?? []), body]);
       console.log(`[parent-wake] held for ${parentId} (parent has a pending permission): ${body.split("\n")[0]}`);
@@ -43,7 +44,7 @@ export default function contribute(server: PluginServerContext) {
     server.on("agent.permission_requested", async ({ agent, request }, { paseo }) => {
       if (notifiedRequests.has(request.id)) return;
       notifiedRequests.add(request.id);
-      await wake(paseo, agent, permissionBody(agent.id, agent.title ?? agent.id, request));
+      await wake(paseo, agent, (title) => permissionBody(agent.id, title, request));
     }),
     server.on("agent.permission_resolved", async ({ agent, requestId }, { paseo }) => {
       notifiedRequests.delete(requestId);
@@ -53,7 +54,7 @@ export default function contribute(server: PluginServerContext) {
       await flush(paseo, agent.id);
       if (outcome.kind === "canceled") return;
       const error = outcome.kind === "failed" ? outcome.error.message : null;
-      await wake(paseo, agent, turnBody(agent.id, agent.title ?? agent.id, error, lastAssistantText(timeline)));
+      await wake(paseo, agent, (title) => turnBody(agent.id, title, error, lastAssistantText(timeline)));
     }),
   ];
 
