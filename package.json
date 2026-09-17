@@ -1,0 +1,22 @@
+{
+  "name": "paseo-parent-wake",
+  "version": "0.1.0",
+  "description": "Wake an orchestrating parent agent on every question and every finished turn of its child agents, not only the first one.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test lib.test.ts"
+  },
+  "devDependencies": {
+    "@getpaseo/plugin": "0.8.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EPISTEX0/paseo-parent-wake"
+  },
+  "author": "EPISTEX0",
+  "license": "MIT"
+}
