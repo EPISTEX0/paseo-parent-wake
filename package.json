@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --test lib.test.ts"
+    "test": "node --test server/lib.test.ts"
   },
   "devDependencies": {
     "@getpaseo/plugin": "0.8.0",

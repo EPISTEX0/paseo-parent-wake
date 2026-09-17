@@ -1,5 +1,5 @@
 import type { PluginHookAgent, PluginHookContext, PluginServerContext } from "@getpaseo/plugin/server";
-import { lastAssistantText, permissionBody, systemMessage, turnBody, wantsWake } from "./lib.ts";
+import { lastAssistantText, permissionBody, systemMessage, turnBody, wantsWake } from "./server/lib.ts";
 
 type Paseo = PluginHookContext["paseo"];
 
