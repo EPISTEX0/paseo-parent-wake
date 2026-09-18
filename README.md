@@ -42,7 +42,7 @@ Pass `notifyOnFinish: false` on `create_agent` and `send_agent_prompt` once the 
 
   ```
   <paseo-system>
-  Lead · run-live-character asks: "ping?" — yes / no
+  Child · my-project asks: "ping?" — yes / no
 
   Answer with `respond_to_permission` · agentId: <id> · requestId: <id>
 
@@ -53,12 +53,50 @@ Pass `notifyOnFinish: false` on `create_agent` and `send_agent_prompt` once the 
   ```
 
   Finished turns read `<title> finished. · agentId: <id>` followed by `<agent-response>` with the last assistant message (capped at 4000 characters); failed turns read `errored: <message>`. Delivered with `activeTurnBehavior: "steer"` so a running parent is not interrupted.
+- Sent with `messageId: ""`, which keeps the wake out of the parent's message jump list — the strip of ticks down the left margin of the chat, where each tick jumps back to one earlier message. Measured, see [Measuring a change](#measuring-a-change). The chain, reading Paseo 0.8.0:
+  - `@getpaseo/client` builds the request with `options?.messageId ?? crypto.randomUUID()` and then drops the key when it is falsy. Omitting `messageId` therefore buys a generated id; `""` passes through `??` untouched and is dropped, so the request carries no id at all.
+  - Without an id the daemon sets no `clientMessageId` (`agent-prompt.js`), and the two call sites that would write a `user_message` timeline row for a submitted prompt are both gated on it (`agent-manager.js`).
+  - The jump list is built from exactly those rows: the daemon's prompt index keeps `row.item.type === "user_message"` (`timeline-prompt-index.js`) and the web UI maps the resulting `prompts` array into the ticks (`useChatOutline`).
+
+  A wake still reaches the parent's context, still steers its running turn, and still appears in the provider transcript. It just takes no slot in the jump list. Paseo's own `<paseo-system>` notifications end up equally invisible, but by a different route — the daemon filters that envelope off the provider echo path, which is not the mechanism used here.
 - If the parent itself has a permission pending (for example its own `AskUserQuestion`), the message is held and delivered when that permission is resolved or the parent's turn ends. Sending immediately would clear the parent's pending question.
 - Each permission request id is delivered once.
+
+## Measuring a change
+
+`npm test` reaches the pure helpers and the shape of the call this plugin makes. It cannot reach
+the daemon, so anything about what the daemon *does* with that call has to be measured against a
+running one. This is the procedure that produced the numbers below.
+
+Count the ticks in a parent's jump list by counting its `user_message` rows:
+
+```bash
+paseo logs <parentAgentId> | grep -c '^\[User\]'
+```
+
+`paseo logs` prints `[User]` for exactly `item.type === "user_message"`, the same field the
+daemon's prompt index filters on to build the jump list, so this count and the tick count move
+together.
+
+Then, for each version under test: install it, confirm from `~/.paseo/daemon.log` that the plugin
+actually reloaded (see the two traps in `CLAUDE.md` — neither the `paseo plugin ls` commit column
+nor the checkout mtime tells you what is loaded), count, trigger three real wakes, count again.
+Each wake leaves a `[parent-wake] → …` line in `daemon.log` to prove it fired.
+
+Result on Paseo 0.8.0, three wakes per branch:
+
+| plugin  | wakes | ticks before → after |
+| ------- | ----- | -------------------- |
+| 0.1.1   | 3     | 3 → 6                |
+| 0.2.0   | 3     | 6 → 6                |
+
+Under 0.2.0 all three wakes still steered the parent's running turn and still landed in the
+provider transcript. The wakes left the jump list; they did not leave.
 
 ## Limitations
 
 - Events raised while the daemon or the plugin is restarting are not replayed.
+- A wake is invisible in the parent's chat and takes no slot in its jump list. It is in the parent's context and in the provider transcript, but not in the daemon's timeline. To read one back, use `get_agent_activity` on the child.
 - Held messages live in memory; a plugin restart drops them.
 - The message format mirrors Paseo 0.8's wording. If Paseo changes it, the parent still gets the ids it needs, only the prose differs.
 - If Paseo ever adds a persistent notify option, prefer it and remove this plugin.

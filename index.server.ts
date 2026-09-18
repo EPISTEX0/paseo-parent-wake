@@ -10,8 +10,12 @@ export default function contribute(server: PluginServerContext) {
 
   async function deliver(paseo: Paseo, parentId: string, body: string) {
     const parent = paseo.agents.ref(parentId);
-    // The daemon accepts activeTurnBehavior even though the SDK type omits it; default would interrupt.
-    const options = { activeTurnBehavior: "steer" } as Parameters<typeof parent.send>[1];
+    // The daemon accepts activeTurnBehavior even though PaseoAgentSendOptions omits it; default would interrupt.
+    // messageId must be "" and not absent: the client mints `options?.messageId ?? crypto.randomUUID()`,
+    // so omitting it buys a real id, while "" survives ?? and is then dropped as falsy from the request.
+    // Without an id the daemon writes no user_message row, which is what keeps a wake out of the jump list.
+    // Rewriting that ?? as || would silently undo this fix, and nothing here would fail.
+    const options = { activeTurnBehavior: "steer", messageId: "" } as Parameters<typeof parent.send>[1];
     await parent.send(systemMessage(body), options);
     console.log(`[parent-wake] → ${parentId}: ${body.split("\n")[0]}`);
   }
