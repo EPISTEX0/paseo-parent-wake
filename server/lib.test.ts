@@ -26,13 +26,13 @@ test("responseBlock truncates long text", () => {
 });
 
 test("bodies lead with the agent name and carry the ids", () => {
-  const p = permissionBody("a1", "Lead · x", { id: "r1", title: "ping?", description: "yes / no" });
-  assert.match(p, /^Lead · x asks: "ping\?" — yes \/ no\n/);
+  const p = permissionBody("a1", "Child · x", { id: "r1", title: "ping?", description: "yes / no" });
+  assert.match(p, /^Child · x asks: "ping\?" — yes \/ no\n/);
   assert.match(p, /agentId: a1 · requestId: r1/);
   assert.match(p, /"requestId": "r1"/);
-  assert.match(permissionBody("a1", "Lead · x", { id: "r2", name: "Bash" }), /needs permission \(Bash\)/);
-  assert.equal(turnBody("a1", "Lead · x", null, "done"), "Lead · x finished. · agentId: a1\n\n<agent-response>\ndone\n</agent-response>");
-  assert.match(turnBody("a1", "Lead · x", "boom", ""), /^Lead · x errored: boom · agentId: a1$/);
+  assert.match(permissionBody("a1", "Child · x", { id: "r2", name: "Bash" }), /needs permission \(Bash\)/);
+  assert.equal(turnBody("a1", "Child · x", null, "done"), "Child · x finished. · agentId: a1\n\n<agent-response>\ndone\n</agent-response>");
+  assert.match(turnBody("a1", "Child · x", "boom", ""), /^Child · x errored: boom · agentId: a1$/);
 });
 
 // Guards the one line the jump-list fix lives on. This pins the shape of the call only: the

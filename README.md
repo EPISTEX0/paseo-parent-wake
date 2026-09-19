@@ -68,6 +68,40 @@ Pass `notifyOnFinish: false` on `create_agent` and `send_agent_prompt` once the 
 the daemon, so anything about what the daemon *does* with that call has to be measured against a
 running one. This is the procedure that produced the numbers below.
 
+### Loading a test build
+
+`paseo plugin install <dir>` refuses an id that is already configured:
+
+```
+Plugin ID "parent-wake" is already configured; choose another ID with --id
+```
+
+`paseo plugin update` is not the way round it either. `sources.json` records a `remote` and a
+`commit` pointing at GitHub, so `update` pulls `main` from GitHub over the checkout and destroys
+any unpushed commit sitting in it.
+
+What works is to copy the runtime files straight into `checkoutRoot` and reload:
+
+```bash
+CHECKOUT=$(node -e 'const fs=require("fs"),os=require("os");console.log(JSON.parse(fs.readFileSync(os.homedir()+"/.paseo/plugins/sources.json","utf8"))["parent-wake"].checkoutRoot)')
+cp index.server.ts "$CHECKOUT/"
+cp server/lib.ts "$CHECKOUT/server/"
+sha256sum index.server.ts server/lib.ts "$CHECKOUT/index.server.ts" "$CHECKOUT/server/lib.ts"
+paseo plugin reload parent-wake
+```
+
+Compare the four hashes before trusting anything the run produces, and run `sha256sum` again after
+rolling back, so the "before" and "after" builds are both pinned rather than assumed.
+
+Prefer this over `remove` + `install`: it leaves no window in which the plugin is absent, and
+during such a window every parent on the machine silently stops being woken.
+
+After the reload `paseo plugin ls` still prints the commit recorded in `sources.json` — the one
+from the last `plugin add`, not the build now running. The hashes above and the reload event in
+`~/.paseo/daemon.log` are the evidence; that column is not.
+
+### Jump list ticks
+
 Count the ticks in a parent's jump list by counting its `user_message` rows:
 
 ```bash
@@ -78,10 +112,10 @@ paseo logs <parentAgentId> | grep -c '^\[User\]'
 daemon's prompt index filters on to build the jump list, so this count and the tick count move
 together.
 
-Then, for each version under test: install it, confirm from `~/.paseo/daemon.log` that the plugin
-actually reloaded (see the two traps in `CLAUDE.md` — neither the `paseo plugin ls` commit column
-nor the checkout mtime tells you what is loaded), count, trigger three real wakes, count again.
-Each wake leaves a `[parent-wake] → …` line in `daemon.log` to prove it fired.
+Then, for each version under test: load it as above, confirm from `~/.paseo/daemon.log` that the
+plugin actually reloaded (see the two traps in `CLAUDE.md` — neither the `paseo plugin ls` commit
+column nor the checkout mtime tells you what is loaded), count, trigger three real wakes, count
+again. Each wake leaves a `[parent-wake] → …` line in `daemon.log` to prove it fired.
 
 Result on Paseo 0.8.0, three wakes per branch:
 
